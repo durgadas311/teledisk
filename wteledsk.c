@@ -49,6 +49,12 @@
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>   /* for open() defines */
+#ifndef MSDOS
+#include <stdlib.h>
+#include <ctype.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif
 
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
@@ -70,11 +76,15 @@ typedef unsigned short WORD;
 
 #define SHSZ  6  // sector header size, this is base size, its variable
 
+#if 0
 #define DUMP 1  /* enable dump options, if defined you must supply
                    your own dump routine per the prototype below
                 */
+#endif
 
-extern dump(FILE *fp,unsigned char *buf,unsigned len,unsigned adr);
+#ifdef DUMP
+extern void dump(FILE *fp,unsigned char *buf,unsigned len,unsigned adr);
+#endif
 
 // force big stack was getting overflow if redirected output
 
@@ -178,7 +188,7 @@ struct rep_rec {
 #define BLKSZMSK 0x7 // low order 3 bits, only expect to use 2 of them
 
 
-block_size(ctl)
+int block_size(int ctl)
 {
     int j,sz=128;
     j = ctl & BLKSZMSK;
@@ -187,9 +197,14 @@ block_size(ctl)
     return(sz);
 }
 
+#ifdef DCOMP
+extern int Decode(unsigned char *buf,int len);
+extern void init_Decode(int fp);
+#endif
+
 unsigned char docomp = 0; // global flag set to 1 if advanced compression
 
-cread(int fp,void *buf,int len)
+int cread(int fp,void *buf,int len)
 {
     int ret;
     if(docomp)
@@ -203,8 +218,7 @@ cread(int fp,void *buf,int len)
 }
 
 #ifdef DCOMP
-#define read  cread  // redefine read
-
+#define read  cread  // redefine read - must be *after* cread!
 #else
 // dummy decompression to satisfy linker
 int Decode(unsigned char *buf,int len)
@@ -463,7 +477,7 @@ WORD *ctl)
 
 
 // advance over skipped blocks if writing output
-write_skip(int fo,int skipped,int blksz,int trkcnt)
+int write_skip(int fo,int skipped,int blksz,int trkcnt)
 {
      char skip_msg[25];
      long offset,fpos;
@@ -485,7 +499,7 @@ write_skip(int fo,int skipped,int blksz,int trkcnt)
    The pro\wps?.td0 images do a lot of this.  I added
    some logic in main to see how often skipped sectors are rewritten
 */
-write_repeat(int fo,unsigned char *buf,int blksz,int csec,int rsec)
+int write_repeat(int fo,unsigned char *buf,int blksz,int csec,int rsec)
 {
     long fpos=0,rpos=0,off;
     int rd=0,suc=1;
@@ -506,7 +520,7 @@ char *mons[] = {"Jan","Feb","Mar","April","May","June","July",
 
 #define MAXSEC 20 // size of array to see which sectors in a track written
 
-main(int argc,char *argv[])
+int main(int argc,char *argv[])
 {
     int cnt,csec,fd=EOF,fo=EOF,rd,i=-1,tnul = 0,nnul = 0,suc=-1,seccnt=0,trkcnt=0;
     int blksz,skip_cnt,rept_cnt,max_sec=0;

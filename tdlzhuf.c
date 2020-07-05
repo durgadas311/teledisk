@@ -50,6 +50,9 @@ In summary changes by WTK:
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifndef MSDOS
+#include <unistd.h>
+#endif
 
 /* WTK adds top level control structure to give Decode()
    a memory between calls
