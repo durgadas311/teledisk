@@ -558,7 +558,9 @@ int Decode(unsigned char *buf, int len)  /* Decoding/Uncompressing */
 #endif
 unsigned char obuf[BUFSZ];
 
-main(int argc, char *argv[])
+extern unsigned short do_crc(unsigned char *b, unsigned short len);
+
+int main(int argc, char *argv[])
 {
     unsigned char *ptr,head[12],chead[10];
     int fp,fo,rd;
@@ -568,7 +570,7 @@ main(int argc, char *argv[])
 
     if(argc < 3)
     {
-        printf("\nusage: tdconv <in-file> <out-file>");
+        printf("\nusage: tdconv <in-file> <out-file>\n");
         exit(0);
     }
     else if((fo = open(argv[2],O_RDWR|O_BINARY|O_CREAT|O_TRUNC,S_IREAD|S_IWRITE))

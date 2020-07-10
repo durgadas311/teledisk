@@ -66,8 +66,10 @@ typedef unsigned short WORD;
 #define SKIP_MASK 0x200 // bit 9 set if skipping a record, # skipped in low byte
 #define REPT_MASK 0x400 // set bit 10 if repeating a sector, sec # in low byte
 
+#if 0	// Use commandline to define
 #define AKAI 1 // defining this makes it V2.16 compatible
                // not required for V2.12 ie the DEC images
+#endif
 #define BLKSZ 2048 
 /* 2048 is good for lots of stuff, dynamically allocated in main
    average size of AKAI is 1024, DEC RX50 512
@@ -76,7 +78,7 @@ typedef unsigned short WORD;
 
 #define SHSZ  6  // sector header size, this is base size, its variable
 
-#if 0
+#if 0	// Use commandline to define
 #define DUMP 1  /* enable dump options, if defined you must supply
                    your own dump routine per the prototype below
                 */
@@ -89,6 +91,9 @@ extern void dump(FILE *fp,unsigned char *buf,unsigned len,unsigned adr);
 // force big stack was getting overflow if redirected output
 
 unsigned adr; // global address for dump() calls, ultimately remove
+
+int sec_adj = 0;	// global to adjust for things like Kaypro
+			// where first sector number is 0.
 
 #pragma pack(1)  // BYTE pack structures in MSC
 
@@ -310,13 +315,14 @@ WORD *ctl)
 #ifdef AKAI
     else if(!(*ctl & WARN) && (psec->sec & 0x60) != 0x60 && sec != psec->sec)
     {
-         printf("\nsector record mismatch\n");
+         printf("\nsector record mismatch (AKAI): sec=%d psec->sec=%d\n",
+			sec, psec->sec);
              suc = 2; // its a fatal error
     }
 #else
     else if(!(*ctl & WARN) && sec != psec->sec)
     {
-         printf("\nsector record mismatch\n");
+         printf("\nsector record mismatch: sec=%d psec->sec=%d\n", sec, psec->sec);
              suc = 2; // its a fatal error
     }
 #endif
@@ -568,6 +574,10 @@ int main(int argc,char *argv[])
                      printf("\nerror for -w<drv> must be A or B");
 
               }
+              else if(strnicmp(argv[i],"-z",2) == 0)
+              {
+                  sec_adj = 1; // subtracted from current sec num to match img
+              }
               else if(strnicmp(argv[i],"-o",2) == 0)
                    if((fo=open(argv[i]+2,O_BINARY|O_RDWR|O_CREAT|O_TRUNC,
                         S_IREAD|S_IWRITE)) == EOF)
@@ -747,7 +757,7 @@ int main(int argc,char *argv[])
                      if((ctl & DCNT) && cnt-- <=0)
                         break;
                      skipped = 0; // assume signal no skip occured
-                     if((suc = do_sector(fd,&trk,block,i+skip_cnt-rept_cnt,&ctl)) == 0 ||
+                     if((suc = do_sector(fd,&trk,block,i-sec_adj+skip_cnt-rept_cnt,&ctl)) == 0 ||
                          suc == AKAI_SEC || (suc &  SKIP_MASK) || (suc & REPT_MASK) )
                      {
 #ifdef DUMP
